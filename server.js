@@ -5,25 +5,24 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // 中间件
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static('public'));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// 数据目录
-const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-}
+// ============ 数据存储（Vercel 适配版） ============
+// Vercel 的 /tmp 目录可写，持久化存储用内存
+let records = [];
 
-const DATA_FILE = path.join(dataDir, 'records.json');
+// 尝试从文件恢复数据
+const DATA_FILE = path.join('/tmp', 'records.json');
 
 function readRecords() {
     try {
         if (fs.existsSync(DATA_FILE)) {
-            return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+            const data = fs.readFileSync(DATA_FILE, 'utf8');
+            return JSON.parse(data);
         }
     } catch (err) {
         console.error('读取失败:', err.message);
@@ -31,14 +30,23 @@ function readRecords() {
     return [];
 }
 
-function writeRecords(records) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(records, null, 2));
+function writeRecords(data) {
+    try {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    } catch (err) {
+        console.error('写入失败:', err.message);
+    }
 }
 
-if (!fs.existsSync(DATA_FILE)) {
-    writeRecords([]);
+// 初始化
+if (fs.existsSync(DATA_FILE)) {
+    records = readRecords();
+} else {
+    records = [];
+    writeRecords(records);
 }
 
+// ============ 上传配置 ============
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 }
@@ -46,6 +54,7 @@ const upload = multer({
 
 // ============ 路由 ============
 
+// 1. 上传
 app.post('/api/upload', upload.single('qrImage'), (req, res) => {
     try {
         const { shareCode } = req.body;
@@ -61,7 +70,6 @@ app.post('/api/upload', upload.single('qrImage'), (req, res) => {
         const base64 = file.buffer.toString('base64');
         const imageData = `data:${file.mimetype};base64,${base64}`;
 
-        const records = readRecords();
         const newRecord = {
             id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
             shareCode: shareCode.trim(),
@@ -70,12 +78,13 @@ app.post('/api/upload', upload.single('qrImage'), (req, res) => {
             fileSize: file.size,
             ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || '未知',
             createdAt: new Date().toLocaleString('zh-CN'),
-            type: 'recharge'  // 标记为充值类型
+            type: 'recharge'
         };
+
         records.push(newRecord);
         writeRecords(records);
 
-        console.log('✅ 充值凭证上传成功:', shareCode);
+        console.log('✅ 上传成功:', shareCode);
         res.json({ success: true, message: '提交成功！', data: newRecord });
     } catch (err) {
         console.error('上传错误:', err.message);
@@ -83,19 +92,19 @@ app.post('/api/upload', upload.single('qrImage'), (req, res) => {
     }
 });
 
+// 2. 获取记录
 app.get('/api/records', (req, res) => {
     try {
-        const records = readRecords();
         res.json(records);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
+// 3. 删除记录
 app.delete('/api/records/:id', (req, res) => {
     try {
         const { id } = req.params;
-        let records = readRecords();
         records = records.filter(r => r.id !== id);
         writeRecords(records);
         res.json({ success: true });
@@ -104,20 +113,16 @@ app.delete('/api/records/:id', (req, res) => {
     }
 });
 
+// 4. 清空
 app.delete('/api/clear', (req, res) => {
     try {
-        writeRecords([]);
+        records = [];
+        writeRecords(records);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-app.listen(PORT, () => {
-    console.log('========================================');
-    console.log('✅ 充值系统启动成功！');
-    console.log(`📍 地址: http://localhost:${PORT}`);
-    console.log(`📤 上传页面: http://localhost:${PORT}`);
-    console.log(`📊 管理后台: http://localhost:${PORT}/admin.html`);
-    console.log('========================================');
-});
+// ============ 导出 ============
+module.exports = app;

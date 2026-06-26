@@ -1,7 +1,7 @@
 {
   "name": "upload-system",
   "version": "1.0.0",
-  "description": "二维码和口令上传系统",
+  "description": "充值二维码上传系统",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
