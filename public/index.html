@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>充值中心 - 二维码上传</title>
+    <!-- Font Awesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* ===== 全局重置 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* 背景装饰 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 30% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+                        radial-gradient(ellipse at 70% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+            z-index: 0;
+            animation: floatBg 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes floatBg {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(2%, 1%) rotate(2deg); }
+        }
+
+        /* ===== 主容器 ===== */
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 520px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 40px;
+            padding: 40px 32px 32px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+        }
+
+        /* ===== 头部 ===== */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header .icon-wrapper {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.15));
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            margin-bottom: 16px;
+            font-size: 32px;
+            color: #818cf8;
+            transition: all 0.3s ease;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #e0e7ff, #a5b4fc, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+            margin-top: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===== 卡片 ===== */
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 24px;
+            padding: 24px 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .card:last-child {
+            margin-bottom: 0;
+        }
+
+        .card-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            letter-spacing: 0.3px;
+        }
+
+        .card-label i {
+            color: #818cf8;
+            font-size: 16px;
+        }
+
+        /* ===== 上传区域 ===== */
+        .upload-zone {
+            position: relative;
+            border: 2px dashed rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 32px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .upload-zone:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            background: rgba(99, 102, 241, 0.05);
+            transform: translateY(-1px);
+        }
+
+        .upload-zone.dragover {
+            border-color: #818cf8;
+            background: rgba(99, 102, 241, 0.08);
+            transform: scale(1.01);
+        }
+
+        .upload-zone .icon-big {
+            font-size: 48px;
+            color: rgba(255, 255, 255, 0.15);
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-zone:hover .icon-big {
+            color: rgba(129, 140, 248, 0.4);
+        }
+
+        .upload-zone .hint {
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .upload-zone .hint small {
+            display: block;
+            font-weight: 400;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.2);
+            margin-top: 4px;
+        }
+
+        .upload-zone input[type="file"] {
+            display: none;
+        }
+
+        /* ===== 文件状态 ===== */
+        .file-status {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            border-radius: 16px;
+            margin-top: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+        }
+
+        .file-status.show {
+            display: flex;
+        }
+
+        .file-status .file-icon {
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+
+        .file-status .file-info {
+            flex: 1;
+            text-align: left;
+        }
+
+        .file-status .file-info .name {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            font-weight: 500;
+            word-break: break-all;
+        }
+
+        .file-status .file-info .size {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 12px;
+        }
+
+        .file-status .file-badge {
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .file-status .file-badge.success {
+            background: rgba(52, 211, 153, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+
+        .file-status .file-badge.error {
+            background: rgba(251, 113, 133, 0.15);
+            color: #fb7185;
+            border: 1px solid rgba(251, 113, 133, 0.2);
+        }
+
+        .file-status .file-badge.pending {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.2);
+        }
+
+        /* ===== 预览 ===== */
+        .preview-container {
+            display: none;
+            margin-top: 14px;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .preview-container.show {
+            display: block;
+        }
+
+        .preview-container img {
+            width: 100%;
+            max-height: 280px;
+            object-fit: contain;
+            display: block;
+            padding: 8px;
+        }
+
+        .preview-container .preview-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* ===== 口令输入 ===== */
+        .input-group {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .input-group:focus-within {
+            border-color: rgba(99, 102, 241, 0.4);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.06);
+        }
+
+        .input-group .prefix {
+            padding: 0 14px 0 18px;
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 16px 16px 16px 0;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 15px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.2);
+            font-weight: 400;
+        }
+
+        /* ===== 提交按钮 ===== */
+        .btn-submit {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 20px;
+            font-size: 17px;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
+            position: relative;
+            overflow: hidden;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(99, 102, 241, 0.35);
+        }
+
+        .btn-submit:active:not(:disabled) {
+            transform: translateY(0px);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-submit .btn-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-submit .btn-content i {
+            font-size: 18px;
+        }
+
+        /* ===== 状态消息 ===== */
+        .status-box {
+            margin-top: 18px;
+            padding: 14px 18px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 52px;
+            transition: all 0.4s ease;
+        }
+
+        .status-box .status-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .status-box .status-text {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+            flex: 1;
+        }
+
+        .status-box .status-text strong {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 600;
+        }
+
+        .status-box.success {
+            border-color: rgba(52, 211, 153, 0.15);
+            background: rgba(52, 211, 153, 0.04);
+        }
+
+        .status-box.success .status-text {
+            color: #6ee7b7;
+        }
+
+        .status-box.error {
+            border-color: rgba(251, 113, 133, 0.15);
+            background: rgba(251, 113, 133, 0.04);
+        }
+
+        .status-box.error .status-text {
+            color: #fb7185;
+        }
+
+        .status-box.pending {
+            border-color: rgba(251, 191, 36, 0.12);
+            background: rgba(251, 191, 36, 0.03);
+        }
+
+        .status-box.pending .status-text {
+            color: #fbbf24;
+        }
+
+        /* ===== 页脚 ===== */
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.15);
+            font-size: 12px;
+            letter-spacing: 0.3px;
+        }
+
+        .footer i {
+            color: rgba(255, 255, 255, 0.08);
+            margin: 0 4px;
+        }
+
+        /* ===== 二维码检测动画 ===== */
+        @keyframes scanLine {
+            0% { top: 0; opacity: 0.6; }
+            50% { top: 100%; opacity: 1; }
+            100% { top: 0; opacity: 0.6; }
+        }
+
+        .scanning {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scanning::after {
+            content: '';
+            position: absolute;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #818cf8, transparent);
+            animation: scanLine 2s ease-in-out infinite;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .scanning.active::after {
+            opacity: 1;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 480px) {
+            .container {
+                padding: 28px 18px 24px;
+                border-radius: 28px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .header .icon-wrapper {
+                width: 60px;
+                height: 60px;
+                font-size: 26px;
+            }
+
+            .card {
+                padding: 18px 14px;
+            }
+
+            .upload-zone {
+                padding: 24px 16px;
+            }
+
+            .upload-zone .icon-big {
+                font-size: 36px;
+            }
+
+            .btn-submit {
+                padding: 16px;
+                font-size: 15px;
+            }
+
+            .file-status {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- ===== 头部 ===== -->
+    <div class="header">
+        <div class="icon-wrapper">
+            <i class="fas fa-qrcode"></i>
+        </div>
+        <h1>充值中心</h1>
+        <p>请上传您的充值二维码凭证</p>
+    </div>
+
+    <!-- ===== 上传卡片 ===== -->
+    <div class="card">
+        <div class="card-label">
+            <i class="fas fa-upload"></i>
+            上传充值二维码
+        </div>
+
+        <!-- 上传区域 -->
+        <div class="upload-zone" id="uploadZone">
+            <div class="icon-big">
+                <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <div class="hint">
+                点击或拖拽上传二维码图片
+                <small>支持 JPG、PNG、WebP · 最大 10MB</small>
+            </div>
+            <input type="file" id="qrInput" accept="image/*" />
+        </div>
+
+        <!-- 文件状态 -->
+        <div class="file-status" id="fileStatus">
+            <div class="file-icon" id="fileIcon">🖼️</div>
+            <div class="file-info">
+                <div class="name" id="fileName">未选择文件</div>
+                <div class="size" id="fileSize">0 KB</div>
+            </div>
+            <div class="file-badge pending" id="fileBadge">等待检测</div>
+        </div>
+
+        <!-- 预览 -->
+        <div class="preview-container" id="previewContainer">
+            <img id="previewImage" src="" alt="二维码预览" />
+            <div class="preview-overlay">
+                <i class="fas fa-search-plus"></i> 预览
+            </div>
+        </div>
+
+        <!-- 检测结果 -->
+        <div id="detectResult" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- ===== 口令卡片 ===== -->
+    <div class="card">
+        <div class="card-label">
+            <i class="fas fa-key"></i>
+            充值口令
+        </div>
+        <div class="input-group">
+            <span class="prefix"><i class="fas fa-lock"></i></span>
+            <input type="text" id="shareInput" placeholder="请输入您的充值口令（如：ABC123）" maxlength="50" />
+        </div>
+    </div>
+
+    <!-- ===== 提交按钮 ===== -->
+    <button class="btn-submit" id="submitBtn">
+        <span class="btn-content">
+            <i class="fas fa-paper-plane"></i>
+            提交充值凭证
+        </span>
+    </button>
+
+    <!-- ===== 状态 ===== -->
+    <div class="status-box" id="statusBox">
+        <span class="status-icon">💡</span>
+        <span class="status-text">请上传二维码并输入口令</span>
+    </div>
+
+    <!-- ===== 页脚 ===== -->
+    <div class="footer">
+        <i class="fas fa-shield-alt"></i> 数据加密传输 · 安全可靠
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    //  DOM 引用
+    // ============================================================
+    const uploadZone = document.getElementById('uploadZone');
+    const qrInput = document.getElementById('qrInput');
+    const fileStatus = document.getElementById('fileStatus');
+    const fileIcon = document.getElementById('fileIcon');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const fileBadge = document.getElementById('fileBadge');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewImage = document.getElementById('previewImage');
+    const shareInput = document.getElementById('shareInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusBox = document.getElementById('statusBox');
+    const statusIcon = statusBox.querySelector('.status-icon');
+    const statusText = statusBox.querySelector('.status-text');
+    const detectResult = document.getElementById('detectResult');
+
+    // ============================================================
+    //  状态
+    // ============================================================
+    let qrFile = null;
+    let isQRCode = false;       // 是否检测为二维码
+    let isDetecting = false;
+
+    // ============================================================
+    //  工具函数 - 二维码检测（模拟）
+    // ============================================================
+    function detectQRCode(imageDataUrl) {
+        return new Promise((resolve) => {
+            // 模拟检测延迟（0.8-1.5秒）
+            const delay = 800 + Math.random() * 700;
+            
+            setTimeout(() => {
+                // 模拟检测结果：80% 概率识别为二维码
+                // 实际项目中可以接入真实的 QR 解码库
+                const isQR = Math.random() < 0.8;
+                resolve(isQR);
+            }, delay);
+        });
+    }
+
+    // ============================================================
+    //  更新状态显示
+    // ============================================================
+    function setStatus(type, icon, text) {
+        statusBox.className = 'status-box';
+        if (type) {
+            statusBox.classList.add(type);
+        }
+        statusIcon.textContent = icon;
+        statusText.innerHTML = text;
+    }
+
+    function setFileStatus(icon, name, size, badgeText, badgeType) {
+        fileStatus.classList.add('show');
+        fileIcon.textContent = icon;
+        fileName.textContent = name || '未选择文件';
+        fileSize.textContent = size ? (size / 1024).toFixed(1) + ' KB' : '0 KB';
+        fileBadge.textContent = badgeText || '等待检测';
+        fileBadge.className = 'file-badge ' + (badgeType || 'pending');
+    }
+
+    function showPreview(dataUrl) {
+        previewContainer.classList.add('show');
+        previewImage.src = dataUrl;
+    }
+
+    function hidePreview() {
+        previewContainer.classList.remove('show');
+        previewImage.src = '';
+    }
+
+    function showDetectResult(isQR) {
+        if (isQR) {
+            detectResult.innerHTML = `
+                <div style="padding:12px 16px; border-radius:12px; background:rgba(52,211,153,0.08); border:1px solid rgba(52,211,153,0.15); display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:18px;">✅</span>
+                    <span style="color:#6ee7b7; font-weight:500;">二维码识别成功！</span>
+                    <span style="color:rgba(255,255,255,0.2); font-size:12px; margin-left:auto;">已通过验证</span>
+                </div>
+            `;
+        } else {
+            detectResult.innerHTML = `
+                <div style="padding:12px 16px; border-radius:12px; background:rgba(251,113,133,0.08); border:1px solid rgba(251,113,133,0.15); display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:18px;">❌</span>
+                    <span style="color:#fb7185; font-weight:500;">未检测到二维码</span>
+                    <span style="color:rgba(255,255,255,0.2); font-size:12px; margin-left:auto;">请上传正确的二维码图片</span>
+                </div>
+            `;
+        }
+    }
+
+    function clearDetectResult() {
+        detectResult.innerHTML = '';
+    }
+
+    // ============================================================
+    //  核心：处理图片上传
+    // ============================================================
+    async function handleFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+            setStatus('error', '❌', '请上传图片文件');
+            return;
+        }
+
+        // 检查文件大小
+        if (file.size > 10 * 1024 * 1024) {
+            setStatus('error', '❌', '图片大小超过 10MB 限制');
+            return;
+        }
+
+        qrFile = file;
+        isQRCode = false;
+        isDetecting = false;
+
+        // 显示文件状态
+        const icon = file.type.includes('png') ? '🖼️' : 
+                     file.type.includes('webp') ? '🌐' : '📷';
+        setFileStatus(icon, file.name, file.size, '检测中...', 'pending');
+
+        // 预览
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const dataUrl = e.target.result;
+            showPreview(dataUrl);
+
+            // 开始检测二维码
+            isDetecting = true;
+            setStatus('pending', '⏳', '正在检测二维码...');
+            setFileStatus(icon, file.name, file.size, '检测中...', 'pending');
+
+            try {
+                const isQR = await detectQRCode(dataUrl);
+                isQRCode = isQR;
+                isDetecting = false;
+
+                if (isQR) {
+                    setFileStatus(icon, file.name, file.size, '✅ 二维码', 'success');
+                    setStatus('success', '✅', '二维码识别成功！可以提交');
+                    showDetectResult(true);
+                    // 自动隐藏上传选项（通过禁用再次选择）
+                    uploadZone.style.borderColor = 'rgba(52,211,153,0.3)';
+                    uploadZone.style.background = 'rgba(52,211,153,0.04)';
+                } else {
+                    setFileStatus(icon, file.name, file.size, '❌ 非二维码', 'error');
+                    setStatus('error', '❌', '未检测到二维码，请上传正确的充值二维码');
+                    showDetectResult(false);
+                    uploadZone.style.borderColor = 'rgba(251,113,133,0.3)';
+                    uploadZone.style.background = 'rgba(251,113,133,0.04)';
+                    // 不清除文件，但标记为无效
+                }
+            } catch (err) {
+                isDetecting = false;
+                setStatus('error', '❌', '检测失败，请重试');
+                setFileStatus(icon, file.name, file.size, '检测失败', 'error');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ============================================================
+    //  上传区域事件
+    // ============================================================
+    // 点击上传
+    uploadZone.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'INPUT') {
+            qrInput.click();
+        }
+    });
+
+    // 文件选择
+    qrInput.addEventListener('change', function() {
+        if (this.files && this.files.length > 0) {
+            handleFile(this.files[0]);
+        }
+        this.value = ''; // 允许重复选择同一文件
+    });
+
+    // 拖拽上传
+    uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    // ============================================================
+    //  提交
+    // ============================================================
+    submitBtn.addEventListener('click', async function() {
+        // 验证
+        if (!qrFile) {
+            setStatus('error', '❌', '请先上传二维码图片');
+            return;
+        }
+
+        if (isDetecting) {
+            setStatus('pending', '⏳', '正在检测二维码，请稍候...');
+            return;
+        }
+
+        if (!isQRCode) {
+            setStatus('error', '❌', '当前图片不是有效的二维码，请重新上传');
+            return;
+        }
+
+        const shareCode = shareInput.value.trim();
+        if (!shareCode) {
+            setStatus('error', '❌', '请输入充值口令');
+            shareInput.focus();
+            return;
+        }
+
+        // 提交
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="btn-content"><i class="fas fa-spinner fa-spin"></i> 提交中...</span>';
+        setStatus('pending', '⏳', '正在提交充值凭证...');
+
+        const formData = new FormData();
+        formData.append('qrImage', qrFile);
+        formData.append('shareCode', shareCode);
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                setStatus('success', '✅', '充值凭证提交成功！感谢您的配合');
+                // 清空表单
+                qrFile = null;
+                isQRCode = false;
+                qrInput.value = '';
+                fileStatus.classList.remove('show');
+                hidePreview();
+                clearDetectResult();
+                shareInput.value = '';
+                uploadZone.style.borderColor = '';
+                uploadZone.style.background = '';
+                // 滚动到顶部
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                setStatus('error', '❌', result.error || '提交失败，请重试');
+            }
+        } catch (err) {
+            setStatus('error', '❌', '网络错误，请检查连接后重试');
+            console.error(err);
+        }
+
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span class="btn-content"><i class="fas fa-paper-plane"></i> 提交充值凭证</span>';
+    });
+
+    // 回车提交
+    shareInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            submitBtn.click();
+        }
+    });
+
+    // ============================================================
+    //  初始化
+    // ============================================================
+    setStatus('', '💡', '请上传充值二维码并输入口令');
+    console.log('✅ 充值中心已加载');
+</script>
+</body>
+</html>
