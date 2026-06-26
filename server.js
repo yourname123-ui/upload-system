@@ -11,18 +11,18 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// ============ 数据存储（Vercel 适配版） ============
-// Vercel 的 /tmp 目录可写，持久化存储用内存
-let records = [];
+// 静态文件服务 - 指向 public 文件夹
+app.use(express.static(path.join(__dirname, 'public')));
 
-// 尝试从文件恢复数据
-const DATA_FILE = path.join('/tmp', 'records.json');
+// ============ 数据存储 ============
+// Vercel 使用 /tmp 目录
+const DATA_DIR = '/tmp';
+const DATA_FILE = path.join(DATA_DIR, 'records.json');
 
 function readRecords() {
     try {
         if (fs.existsSync(DATA_FILE)) {
-            const data = fs.readFileSync(DATA_FILE, 'utf8');
-            return JSON.parse(data);
+            return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
         }
     } catch (err) {
         console.error('读取失败:', err.message);
@@ -39,11 +39,8 @@ function writeRecords(data) {
 }
 
 // 初始化
-if (fs.existsSync(DATA_FILE)) {
-    records = readRecords();
-} else {
-    records = [];
-    writeRecords(records);
+if (!fs.existsSync(DATA_FILE)) {
+    writeRecords([]);
 }
 
 // ============ 上传配置 ============
@@ -70,6 +67,7 @@ app.post('/api/upload', upload.single('qrImage'), (req, res) => {
         const base64 = file.buffer.toString('base64');
         const imageData = `data:${file.mimetype};base64,${base64}`;
 
+        const records = readRecords();
         const newRecord = {
             id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
             shareCode: shareCode.trim(),
@@ -80,11 +78,9 @@ app.post('/api/upload', upload.single('qrImage'), (req, res) => {
             createdAt: new Date().toLocaleString('zh-CN'),
             type: 'recharge'
         };
-
         records.push(newRecord);
         writeRecords(records);
 
-        console.log('✅ 上传成功:', shareCode);
         res.json({ success: true, message: '提交成功！', data: newRecord });
     } catch (err) {
         console.error('上传错误:', err.message);
@@ -95,6 +91,7 @@ app.post('/api/upload', upload.single('qrImage'), (req, res) => {
 // 2. 获取记录
 app.get('/api/records', (req, res) => {
     try {
+        const records = readRecords();
         res.json(records);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -105,6 +102,7 @@ app.get('/api/records', (req, res) => {
 app.delete('/api/records/:id', (req, res) => {
     try {
         const { id } = req.params;
+        let records = readRecords();
         records = records.filter(r => r.id !== id);
         writeRecords(records);
         res.json({ success: true });
@@ -116,13 +114,18 @@ app.delete('/api/records/:id', (req, res) => {
 // 4. 清空
 app.delete('/api/clear', (req, res) => {
     try {
-        records = [];
-        writeRecords(records);
+        writeRecords([]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// ============ 导出 ============
-module.exports = app;
+// ============ 启动 ============
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log('========================================');
+    console.log('✅ 充值系统启动成功！');
+    console.log(`📍 地址: http://localhost:${PORT}`);
+    console.log('========================================');
+});
